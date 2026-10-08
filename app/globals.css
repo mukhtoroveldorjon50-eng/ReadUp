@@ -206,3 +206,4 @@ input.gap, select.gap { width: 11em; margin: 0 6px; padding: 3px 10px; border-wi
   input.gap, select.gap { width: 8em; }
 }
 @media print { .nav, .toolbar, .tabs, .finish, .hint { display: none; } }
+.chip.done { background: var(--ok-soft); color: var(--ok); }

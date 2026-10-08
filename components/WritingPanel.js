@@ -2,7 +2,13 @@
 import { useState } from 'react';
 import { send } from './ClientBits';
 
-export default function WritingPanel({ articleId, last, aiEnabled }) {
+// A word counts as used when its stem appears (so "rejuvenated" ticks "rejuvenate").
+const used = (text, word) => {
+  const t = text.toLowerCase();
+  return word.toLowerCase().replace(/\s*\(.*\)/, '').split(/\s+/).every((w) => t.includes(w.length > 5 ? w.slice(0, w.length - 2) : w));
+};
+
+export default function WritingPanel({ articleId, last, aiEnabled, prompt, words = [] }) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -21,7 +27,10 @@ export default function WritingPanel({ articleId, last, aiEnabled }) {
   return (
     <div className="card">
       <h2>Writing practice</h2>
-      <p className="muted">Write 3–5 sentences: summarise the article, or say what you think about it. Try to use some of the new words.</p>
+      {prompt ? <p className="pre">{prompt}</p> : <p className="muted">Write 3–5 sentences: summarise the article, or say what you think about it. Try to use some of the new words.</p>}
+      {prompt && words.length > 0 && (
+        <p className="chips">{words.map((w) => <span key={w} className={'chip' + (used(text, w) ? ' done' : '')}>{used(text, w) ? '☑' : '☐'} {w}</span>)}</p>
+      )}
       <textarea rows={6} value={text} onChange={(e) => setText(e.target.value)} placeholder="Start writing here…" maxLength={3000} />
       <div className="row">
         <button className="btn primary" disabled={busy || text.trim().length < 20} onClick={submit}>

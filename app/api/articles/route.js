@@ -12,11 +12,11 @@ export async function POST(req) {
   const info = db
     .prepare(
       `INSERT INTO articles (title, level, topic, summary, body, body_simple, glossary, lang_quiz, comp_quiz,
-        word_count, published, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
+        writing_prompt, word_count, published, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
     )
     .run(
       v.title, v.level, v.topic, v.summary, v.body, v.body_simple, JSON.stringify(v.glossary),
-      JSON.stringify(v.lang_quiz), JSON.stringify(v.comp_quiz), v.word_count, v.published, now, now
+      JSON.stringify(v.lang_quiz), JSON.stringify(v.comp_quiz), v.writing_prompt, v.word_count, v.published, now, now
     );
   return json({ id: Number(info.lastInsertRowid) });
 }

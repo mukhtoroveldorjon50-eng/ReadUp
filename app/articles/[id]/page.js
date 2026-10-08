@@ -72,6 +72,7 @@ export default async function ArticlePage({ params }) {
         nativeLang={user.native_lang}
         aiEnabled={aiEnabled()}
         lastWriting={lastWriting}
+        writingPrompt={a.writing_prompt}
         next={next ? { id: next.id, title: next.title } : null}
       />
     </>

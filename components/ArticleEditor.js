@@ -13,7 +13,7 @@ export default function ArticleEditor({ article, levels, topics, aiEnabled }) {
   const editing = Boolean(article?.id);
   const [f, setF] = useState({
     title: article?.title ?? '', level: article?.level ?? 'B1', topic: article?.topic ?? '', summary: article?.summary ?? '',
-    body: article?.body ?? '', body_simple: article?.body_simple ?? '', published: article?.published ?? true,
+    body: article?.body ?? '', body_simple: article?.body_simple ?? '', writing_prompt: article?.writing_prompt ?? '', published: article?.published ?? true,
   });
   const [glossary, setGlossary] = useState(article?.glossary ?? []);
   const [lang, setLang] = useState(article?.lang_quiz ?? []);
@@ -101,6 +101,9 @@ export default function ArticleEditor({ article, levels, topics, aiEnabled }) {
         </label>
         <label className="field">Simplified version <small className="muted">(optional, an easier rewrite of the same article)</small>
           <textarea rows={8} value={f.body_simple} onChange={set('body_simple')} />
+        </label>
+        <label className="field">Writing task <small className="muted">(optional, shown in the Writing tab; the key vocabulary words are ticked off as readers use them)</small>
+          <textarea rows={4} value={f.writing_prompt} onChange={set('writing_prompt')} />
         </label>
         <div className="field">
           Audio recording <small className="muted">(optional mp3/m4a/wav, up to 30 MB; without it students can still use text-to-speech)</small>

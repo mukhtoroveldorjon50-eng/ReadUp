@@ -14,10 +14,10 @@ export async function PUT(req, { params }) {
   if (error) return fail(error);
   db.prepare(
     `UPDATE articles SET title=?, level=?, topic=?, summary=?, body=?, body_simple=?, glossary=?, lang_quiz=?,
-     comp_quiz=?, word_count=?, published=?, updated_at=? WHERE id=?`
+     comp_quiz=?, writing_prompt=?, word_count=?, published=?, updated_at=? WHERE id=?`
   ).run(
     v.title, v.level, v.topic, v.summary, v.body, v.body_simple, JSON.stringify(v.glossary),
-    JSON.stringify(v.lang_quiz), JSON.stringify(v.comp_quiz), v.word_count, v.published,
+    JSON.stringify(v.lang_quiz), JSON.stringify(v.comp_quiz), v.writing_prompt, v.word_count, v.published,
     new Date().toISOString(), id
   );
   return json({ ok: true });

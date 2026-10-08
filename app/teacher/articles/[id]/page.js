@@ -14,7 +14,7 @@ export default async function EditArticle({ params }) {
   if (!a) notFound();
   const article = {
     id: a.id, title: a.title, level: a.level, topic: a.topic, summary: a.summary, body: a.body,
-    body_simple: a.body_simple, published: Boolean(a.published), has_audio: Boolean(a.audio_file),
+    body_simple: a.body_simple, writing_prompt: a.writing_prompt, published: Boolean(a.published), has_audio: Boolean(a.audio_file),
     glossary: parseJson(a.glossary, []), lang_quiz: parseJson(a.lang_quiz, []), comp_quiz: parseJson(a.comp_quiz, []),
   };
   return (

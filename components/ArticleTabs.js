@@ -7,7 +7,7 @@ import SpeakingPractice from './SpeakingPractice';
 import WritingPanel from './WritingPanel';
 import AskAi from './AskAi';
 
-export default function ArticleTabs({ article, glossary, saved: saved0, bookmarked, finished, quizzes, nativeLang, aiEnabled, lastWriting, next }) {
+export default function ArticleTabs({ article, glossary, saved: saved0, bookmarked, finished, quizzes, nativeLang, aiEnabled, lastWriting, writingPrompt, next }) {
   const [tab, setTab] = useState('read');
   const [saved, setSaved] = useState(saved0);
 
@@ -54,7 +54,7 @@ export default function ArticleTabs({ article, glossary, saved: saved0, bookmark
         <QuizPanel articleId={article.id} kind="comp" heading="Comprehension quiz" blurb="Did you understand the article? Answer using what the text says." questions={quizzes.comp.questions} best={quizzes.comp.best} />
       </div>
       <div hidden={tab !== 'speak'}><SpeakingPractice body={article.body} /></div>
-      <div hidden={tab !== 'write'}><WritingPanel articleId={article.id} last={lastWriting} aiEnabled={aiEnabled} /></div>
+      <div hidden={tab !== 'write'}><WritingPanel articleId={article.id} last={lastWriting} aiEnabled={aiEnabled} prompt={writingPrompt} words={glossary.map((g) => g.word)} /></div>
       {aiEnabled && <div hidden={tab !== 'ask'}><AskAi articleId={article.id} /></div>}
     </>
   );
