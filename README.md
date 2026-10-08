@@ -36,6 +36,7 @@ Demo logins (after seeding): admin `demo-teacher@example.com` / `demo-password-1
 | --- | --- |
 | `READUP_DATA_DIR` | Where the database and uploaded audio live. Use a persistent volume in production (e.g. `/data`). |
 | `TEACHER_EMAIL` | An email that becomes the admin account when it registers. |
+| `RESET_ALL_USERS` | One-time switch. Set to `DELETE_ALL_USERS`, redeploy, then REMOVE it. Deletes every account and its progress (articles are kept); the next person to register becomes the admin. |
 | `ANTHROPIC_API_KEY` | Optional. Switches on the AI helper, AI writing feedback and AI quiz drafting. |
 | `ANTHROPIC_MODEL` | Optional. Defaults to `claude-haiku-5-5`. |
 
