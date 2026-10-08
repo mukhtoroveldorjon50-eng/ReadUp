@@ -17,8 +17,9 @@ export default async function Home() {
   const cont = db
     .prepare(
       `SELECT a.id, a.title, a.level, a.topic, a.summary, a.word_count FROM views v JOIN articles a ON a.id = v.article_id
-       WHERE v.user_id = ? AND a.published = 1 AND a.id NOT IN (SELECT article_id FROM reads WHERE user_id = ?)
-       ORDER BY v.opened_at DESC LIMIT 2`
+       WHERE v.user_id = ? AND a.published = 1 AND COALESCE(a.group_id, a.id) NOT IN
+         (SELECT COALESCE(x.group_id, x.id) FROM reads r JOIN articles x ON x.id = r.article_id WHERE r.user_id = ?)
+       GROUP BY COALESCE(a.group_id, a.id) ORDER BY v.opened_at DESC LIMIT 2`
     )
     .all(user.id, user.id);
 
@@ -56,7 +57,7 @@ export default async function Home() {
         <h2>Recommended for you</h2>
         {rec.note && <p className="note">{rec.note}</p>}
         {rec.articles.length ? (
-          <div className="grid">{rec.articles.map((a) => <ArticleCard key={a.id} a={a} />)}</div>
+          <div className="grid">{rec.articles.map((a) => <ArticleCard key={a.id} a={a} levels={a.levels} />)}</div>
         ) : (
           <p className="muted">
             You have read everything we have. <Link href="/articles">Browse the library</Link> to re-read favourites.

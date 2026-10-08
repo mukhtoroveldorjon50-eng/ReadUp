@@ -6,7 +6,7 @@ import { requireUser } from '@/lib/auth';
 import { aiEnabled } from '@/lib/ai';
 import { publicQuiz } from '@/lib/grade';
 import { recommend } from '@/lib/stats';
-import { levelClass, parseJson, readMinutes } from '@/lib/util';
+import { LEVELS, levelClass, parseJson, readMinutes } from '@/lib/util';
 
 export async function generateMetadata({ params }) {
   const { id } = await params;
@@ -37,7 +37,11 @@ export default async function ArticlePage({ params }) {
   const lastWriting = db
     .prepare('SELECT text, feedback FROM writings WHERE user_id = ? AND article_id = ? ORDER BY id DESC LIMIT 1')
     .get(user.id, a.id) ?? null;
-  const next = recommend(user, 3).articles.find((x) => x.id !== a.id) ?? null;
+  const siblings = db
+    .prepare(`SELECT id, level, title FROM articles WHERE group_id = ? ${user.role === 'teacher' ? '' : 'AND published = 1'}`)
+    .all(a.group_id ?? a.id)
+    .sort((x, y) => LEVELS.indexOf(x.level) - LEVELS.indexOf(y.level));
+  const next = recommend(user, 4).articles.find((x) => (x.group_id ?? x.id) !== (a.group_id ?? a.id)) ?? null;
 
   const langQ = parseJson(a.lang_quiz, []);
   const compQ = parseJson(a.comp_quiz, []);
@@ -52,6 +56,17 @@ export default async function ArticlePage({ params }) {
           <span className="muted">{a.word_count} words · {readMinutes(a.word_count)} min</span>
           {!a.published && <span className="chip warn">Draft</span>}
         </div>
+        {siblings.length > 1 && (
+          <div className="levelswitch" role="group" aria-label="Choose the level of this article">
+            <span className="muted small">Reading level:</span>
+            {siblings.map((s) => (
+              <Link key={s.id} href={`/articles/${s.id}`} className={levelClass(s.level) + (s.id === a.id ? ' here' : ' dim')} aria-current={s.id === a.id ? 'true' : undefined}>
+                {s.level}
+              </Link>
+            ))}
+            <span className="muted small">Same article, with language and exercises adapted to each level.</span>
+          </div>
+        )}
         <h1>{a.title}</h1>
         {a.summary && <p className="lead">{a.summary}</p>}
         {user.role === 'teacher' && <p><Link className="btn small" href={`/teacher/articles/${a.id}`}>Edit this article</Link></p>}

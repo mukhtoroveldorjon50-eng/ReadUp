@@ -5,14 +5,14 @@ import { send } from './ClientBits';
 
 const blankQ = (type) =>
   type === 'mcq' ? { type, q: '', options: ['', '', '', ''], answer: 0, explanation: '' }
-  : type === 'tfng' ? { type, q: '', answer: 'True', explanation: '' }
+  : type === 'tfng' || type === 'tf' ? { type, q: '', answer: 'True', explanation: '' }
   : { type, q: '', answer: '', explanation: '' };
 
-export default function ArticleEditor({ article, levels, topics, aiEnabled }) {
+export default function ArticleEditor({ article, levels, topics, aiEnabled, groupId = null, takenLevels = [], defaults = {} }) {
   const router = useRouter();
   const editing = Boolean(article?.id);
   const [f, setF] = useState({
-    title: article?.title ?? '', level: article?.level ?? 'B1', topic: article?.topic ?? '', summary: article?.summary ?? '',
+    title: article?.title ?? '', level: article?.level ?? levels.find((l) => !takenLevels.includes(l)) ?? 'B1', topic: article?.topic ?? defaults.topic ?? '', summary: article?.summary ?? '',
     body: article?.body ?? '', body_simple: article?.body_simple ?? '', writing_prompt: article?.writing_prompt ?? '', published: article?.published ?? true,
   });
   const [glossary, setGlossary] = useState(article?.glossary ?? []);
@@ -39,7 +39,7 @@ export default function ArticleEditor({ article, levels, topics, aiEnabled }) {
   async function save() {
     setBusy('save');
     setError('');
-    const payload = { ...f, glossary, lang_quiz: lang, comp_quiz: comp };
+    const payload = { ...f, glossary, lang_quiz: lang, comp_quiz: comp, ...(editing ? {} : { group_id: groupId }) };
     const { ok, data } = editing
       ? await send(`/api/articles/${article.id}`, 'PUT', payload)
       : await send('/api/articles', 'POST', payload);
@@ -85,7 +85,7 @@ export default function ArticleEditor({ article, levels, topics, aiEnabled }) {
         <label className="field">Title<input value={f.title} onChange={set('title')} maxLength={200} /></label>
         <div className="three">
           <label className="field">Level
-            <select value={f.level} onChange={set('level')}>{levels.map((l) => <option key={l}>{l}</option>)}</select>
+            <select value={f.level} onChange={set('level')}>{levels.map((l) => <option key={l} disabled={takenLevels.includes(l)}>{l}{takenLevels.includes(l) ? ' (already exists)' : ''}</option>)}</select>
           </label>
           <label className="field">Topic
             <input list="topics" value={f.topic} onChange={set('topic')} placeholder="Science, Culture…" />
@@ -96,7 +96,7 @@ export default function ArticleEditor({ article, levels, topics, aiEnabled }) {
         <label className="field">Short summary <small className="muted">(shown on the article card)</small>
           <input value={f.summary} onChange={set('summary')} maxLength={400} />
         </label>
-        <label className="field">Article text <small className="muted">(leave a blank line between paragraphs)</small>
+        <label className="field">Article text <small className="muted">(leave a blank line between paragraphs; start a line with ## to make a heading)</small>
           <textarea rows={14} value={f.body} onChange={set('body')} />
         </label>
         <label className="field">Simplified version <small className="muted">(optional, an easier rewrite of the same article)</small>
@@ -152,9 +152,9 @@ function QuizEditor({ title, hint, list, setList }) {
       <div className="row between">
         <h2>{title} <span className="muted small">({list.length} questions)</span></h2>
         <div className="row">
-          {['mcq', 'tfng', 'gap'].map((t) => (
+          {['mcq', 'tfng', 'tf', 'gap'].map((t) => (
             <button key={t} type="button" className="btn small" onClick={() => setList([...list, blankQ(t)])}>
-              + {t === 'mcq' ? 'Multiple choice' : t === 'tfng' ? 'True/False/NG' : 'Gap fill'}
+              + {t === 'mcq' ? 'Multiple choice' : t === 'tfng' ? 'True/False/NG' : t === 'tf' ? 'True/False' : 'Gap fill'}
             </button>
           ))}
         </div>
@@ -163,7 +163,7 @@ function QuizEditor({ title, hint, list, setList }) {
       {list.map((q, i) => (
         <div className="qedit" key={i}>
           <div className="row between">
-            <b>{i + 1}. {q.type === 'mcq' ? 'Multiple choice' : q.type === 'tfng' ? 'True / False / Not given' : 'Gap fill'}</b>
+            <b>{i + 1}. {q.type === 'mcq' ? 'Multiple choice' : q.type === 'tfng' ? 'True / False / Not given' : q.type === 'tf' ? 'True / False' : 'Gap fill'}</b>
             <div className="row">
               <button type="button" className="btn small" disabled={i === 0} onClick={() => { const a = [...list]; [a[i - 1], a[i]] = [a[i], a[i - 1]]; setList(a); }} aria-label="Move up">↑</button>
               <button type="button" className="btn small" onClick={() => setList(list.filter((_, j) => j !== i))} aria-label="Remove question">✕</button>
@@ -177,12 +177,12 @@ function QuizEditor({ title, hint, list, setList }) {
             </label>
           ))}
           {q.type === 'mcq' && <p className="muted small">Select the radio button next to the correct option.</p>}
-          {q.type === 'tfng' && (
+          {(q.type === 'tfng' || q.type === 'tf') && (
             <select value={q.answer} onChange={(e) => upd(i, { answer: e.target.value })}>
-              <option>True</option><option>False</option><option>Not given</option>
+              <option>True</option><option>False</option>{q.type === 'tfng' && <option>Not given</option>}
             </select>
           )}
-          {q.type === 'gap' && <input placeholder="Correct answer (use | for alternatives, e.g. have been|'ve been)" value={q.answer} onChange={(e) => upd(i, { answer: e.target.value })} />}
+          {q.type === 'gap' && <input placeholder="Correct answer (use | for alternatives, e.g. have been|'ve been; for short answers use ~keyword,other::model answer)" value={q.answer} onChange={(e) => upd(i, { answer: e.target.value })} />}
           <input placeholder="Explanation shown after answering (optional but helpful)" value={q.explanation} onChange={(e) => upd(i, { explanation: e.target.value })} />
         </div>
       ))}

@@ -13,8 +13,15 @@ function buildText(body) {
     .split(/\n\s*\n/)
     .map((p) => p.replace(/\s*\n\s*/g, ' ').trim())
     .filter(Boolean)
-    .map((p) => splitSentences(p).map((text) => ({ i: n++, text, tokens: text.split(/([A-Za-z][A-Za-z'’-]*)/) })));
+    .map((p) => {
+      // A paragraph starting with "## " is a heading, kept whole as one clickable line.
+      const heading = p.startsWith('## ');
+      const parts = heading ? [p.slice(3).trim()] : splitSentences(p);
+      return parts.map((text) => ({ i: n++, text, heading, tokens: text.split(/([A-Za-z][A-Za-z'’-]*)/) }));
+    });
 }
+
+const Block = ({ heading, children }) => (heading ? <h3 className="prose-h">{children}</h3> : <p>{children}</p>);
 
 // Candidate base forms, so "studies" finds "study" and "walked" finds "walk".
 function forms(w) {
@@ -191,7 +198,7 @@ export default function ReadingPane({
 
       <article className={'prose s' + size} onClick={onTextClick}>
         {paragraphs.map((sents, pi) => (
-          <p key={pi}>
+          <Block key={pi} heading={sents[0].heading}>
             {sents.map((s) => (
               <span key={s.i} data-i={s.i} className={'sent' + (speaking === s.i ? ' speaking' : '')}>
                 {s.tokens.map((t, ti) => {
@@ -202,7 +209,7 @@ export default function ReadingPane({
                 })}{' '}
               </span>
             ))}
-          </p>
+          </Block>
         ))}
       </article>
       <p className="muted small hint">Tap any word to see what it means. Underlined words are key vocabulary.</p>

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import ArticleCard from '@/components/ArticleCard';
 import { db } from '@/lib/db';
 import { requireUser } from '@/lib/auth';
+import { groupVersions, pickVersion } from '@/lib/articles';
 import { LEVELS, TOPICS } from '@/lib/util';
 
 export const metadata = { title: 'Articles' };
@@ -11,27 +12,33 @@ export default async function Library({ searchParams }) {
   const sp = await searchParams;
   const level = LEVELS.includes(sp.level) ? sp.level : '';
   const topic = String(sp.topic || '');
-  const q = String(sp.q || '').trim();
+  const q = String(sp.q || '').trim().toLowerCase();
   const show = ['unread', 'read', 'saved'].includes(sp.show) ? sp.show : '';
-
-  const where = [user.role === 'teacher' ? '1=1' : 'a.published = 1'];
-  const args = [user.id, user.id];
-  if (level) { where.push('a.level = ?'); args.push(level); }
-  if (topic) { where.push('a.topic = ?'); args.push(topic); }
-  if (q) { where.push('(a.title LIKE ? OR a.summary LIKE ?)'); args.push(`%${q}%`, `%${q}%`); }
-  if (show === 'unread') where.push('r.user_id IS NULL');
-  if (show === 'read') where.push('r.user_id IS NOT NULL');
-  if (show === 'saved') where.push('b.user_id IS NOT NULL');
 
   const rows = db
     .prepare(
-      `SELECT a.id, a.title, a.level, a.topic, a.summary, a.word_count, a.published,
+      `SELECT a.id, a.group_id, a.title, a.level, a.topic, a.summary, a.word_count, a.published,
          r.user_id IS NOT NULL AS read, b.user_id IS NOT NULL AS bookmarked
        FROM articles a LEFT JOIN reads r ON r.article_id = a.id AND r.user_id = ?
        LEFT JOIN bookmarks b ON b.article_id = a.id AND b.user_id = ?
-       WHERE ${where.join(' AND ')} ORDER BY a.id DESC`
+       ${user.role === 'teacher' ? '' : 'WHERE a.published = 1'} ORDER BY a.id DESC`
     )
-    .all(...args);
+    .all(user.id, user.id);
+
+  // One card per article. It opens at the reader's own level when that version exists.
+  const groups = groupVersions(rows)
+    .filter((g) => !topic || g.versions.some((v) => v.topic === topic))
+    .filter((g) => !level || g.versions.some((v) => v.level === level))
+    .filter((g) => !q || g.versions.some((v) => `${v.title} ${v.summary}`.toLowerCase().includes(q)))
+    .map((g) => ({
+      ...g,
+      read: g.versions.some((v) => v.read),
+      bookmarked: g.versions.some((v) => v.bookmarked),
+      shown: pickVersion(g, level || user.level),
+    }))
+    .filter((g) => (show === 'unread' ? !g.read : show === 'read' ? g.read : show === 'saved' ? g.bookmarked : true))
+    .sort((a, b) => b.group_id - a.group_id);
+
   const topics = db.prepare('SELECT DISTINCT topic FROM articles ORDER BY topic').all().map((r) => r.topic);
   const allTopics = [...new Set([...TOPICS, ...topics])].sort();
 
@@ -42,9 +49,9 @@ export default async function Library({ searchParams }) {
         {user.role === 'teacher' && <Link href="/teacher/articles/new" className="btn primary">+ New article</Link>}
       </div>
       <form className="card filters" method="get">
-        <input name="q" defaultValue={q} placeholder="Search titles…" aria-label="Search" />
+        <input name="q" defaultValue={sp.q || ''} placeholder="Search titles…" aria-label="Search" />
         <select name="level" defaultValue={level} aria-label="Level">
-          <option value="">All levels</option>
+          <option value="">Any level</option>
           {LEVELS.map((l) => <option key={l}>{l}</option>)}
         </select>
         <select name="topic" defaultValue={topic} aria-label="Topic">
@@ -60,10 +67,18 @@ export default async function Library({ searchParams }) {
         <button className="btn primary">Filter</button>
         {(level || topic || q || show) && <Link href="/articles" className="btn ghost">Clear</Link>}
       </form>
-      {rows.length ? (
+      <p className="muted small">Many articles come in several levels. Open one and switch level at the top of the page.</p>
+      {groups.length ? (
         <div className="grid">
-          {rows.map((a) => (
-            <ArticleCard key={a.id} a={a} read={a.read} bookmarked={a.bookmarked} extra={a.published ? '' : ' Draft'} />
+          {groups.map((g) => (
+            <ArticleCard
+              key={g.group_id}
+              a={g.shown}
+              levels={g.versions.map((v) => v.level)}
+              read={g.read}
+              bookmarked={g.bookmarked}
+              extra={g.shown.published ? '' : ' Draft'}
+            />
           ))}
         </div>
       ) : (

@@ -84,9 +84,10 @@ export default function QuizPanel({ articleId, kind, heading, blurb, questions, 
                 ))}
               </div>
             )}
-            {q.type === 'tfng' && (
+            {q.hint && <p className="muted small hint-line">{q.hint}</p>}
+            {(q.type === 'tfng' || q.type === 'tf') && (
               <div className="opts inline">
-                {TFNG.map((o) => (
+                {(q.type === 'tf' ? TFNG.slice(0, 2) : TFNG).map((o) => (
                   <button
                     key={o}
                     disabled={Boolean(c)}
