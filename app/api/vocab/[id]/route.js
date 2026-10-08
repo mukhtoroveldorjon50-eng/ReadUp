@@ -14,7 +14,7 @@ export async function POST(req, { params }) {
   const { box, due } = nextReview(card.box, grade);
   db.prepare('UPDATE saved_words SET box = ?, due = ?, reviews = reviews + 1 WHERE id = ?').run(box, due, id);
   await addXp(user.id, grade === 0 ? 0 : 1);
-  return json({ ok: true, box });
+  return json({ ok: true, box, due });
 }
 
 // PATCH { own_sentence } stores the reader's own example sentence for a saved word.

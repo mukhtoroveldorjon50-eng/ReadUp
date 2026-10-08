@@ -15,9 +15,12 @@ export default function VocabList({ words }) {
   const [flipped, setFlipped] = useState(false);
   const [own, setOwn] = useState({}); // own sentences edited this session, by word id
   const [state, setState] = useState('');
+  const [graded, setGraded] = useState({}); // { [id]: { box, due } } after rating a card this session
+  const [tally, setTally] = useState({ forgot: 0, remembered: 0 });
 
   const shown = words.filter((w) => !q || w.word.includes(q.toLowerCase()) || w.definition.toLowerCase().includes(q.toLowerCase()));
   const current = open !== null ? shown[open] : null;
+  const live = (w) => ({ ...w, ...(graded[w.id] || {}) });
   const ownOf = (w) => (own[w.id] !== undefined ? own[w.id] : w.own_sentence || '');
 
   function openCard(i, showBack = false) {
@@ -47,6 +50,17 @@ export default function VocabList({ words }) {
     router.refresh();
   }
 
+  // Rate how well you remembered the word; this feeds the same spaced-repetition schedule as the review session.
+  async function rate(w, grade) {
+    const res = await send(`/api/vocab/${w.id}`, 'POST', { grade });
+    if (!res.ok) return setState('error');
+    setGraded((g) => ({ ...g, [w.id]: { box: res.data.box, due: res.data.due } }));
+    setTally((t) => (grade === 0 ? { ...t, forgot: t.forgot + 1 } : { ...t, remembered: t.remembered + 1 }));
+    router.refresh(); // updates the "due" count on the Review button
+    if (shown.length > 1) move(1);
+    else setOpen(null);
+  }
+
   async function saveOwn(w) {
     setState('saving');
     const res = await send(`/api/vocab/${w.id}`, 'PATCH', { own_sentence: ownOf(w) });
@@ -54,7 +68,10 @@ export default function VocabList({ words }) {
     if (res.ok) router.refresh();
   }
 
-  const status = (w) => (w.box >= 4 ? 'Learned' : w.due <= w.now ? 'Due' : `Box ${w.box}`);
+  const status = (raw) => {
+    const w = live(raw);
+    return w.box >= 4 ? 'Learned' : w.due <= w.now ? 'Due' : `Box ${w.box}`;
+  };
 
   return (
     <>
@@ -66,12 +83,17 @@ export default function VocabList({ words }) {
         </div>
       </div>
 
-      {view === 'check' && <p className="muted small">Tap a word and try to remember what it means. Tap the card again to check.</p>}
+      {view === 'check' && (
+        <p className="muted small">
+          Tap a word and try to remember what it means. Tap the card again to check, then say how you did.
+          {tally.forgot + tally.remembered > 0 && <b> This session: {tally.remembered} remembered, {tally.forgot} to practise.</b>}
+        </p>
+      )}
 
       {view === 'check' ? (
         <div className="tiles">
           {shown.map((w, i) => (
-            <button key={w.id} className={'tile' + (w.box >= 4 ? ' learned' : w.due <= w.now ? ' due' : '')} onClick={() => openCard(i)}>
+            <button key={w.id} className={'tile' + (live(w).box >= 4 ? ' learned' : live(w).due <= w.now ? ' due' : '')} onClick={() => openCard(i)}>
               {w.word}
             </button>
           ))}
@@ -132,6 +154,14 @@ export default function VocabList({ words }) {
                     <span className="small muted">Sentence from the article</span>
                     <p>{current.example ? `“${current.example}”` : <span className="muted">None saved.</span>}</p>
                     {current.article_id && <p className="small"><Link href={`/articles/${current.article_id}`} onClick={stop}>{current.article_title}</Link></p>}
+                  </div>
+                  <div className="rate" onClick={stop}>
+                    <span className="small muted">How well did you remember it?</span>
+                    <div className="row">
+                      <button className="btn danger" onClick={() => rate(current, 0)}>✗ Forgot</button>
+                      <button className="btn primary" onClick={() => rate(current, 2)}>✓ Remembered</button>
+                      <button className="btn" onClick={() => rate(current, 3)}>★ Easy</button>
+                    </div>
                   </div>
                   <div className="sent-box" onClick={stop}>
                     <span className="small muted">Your own sentence</span>
