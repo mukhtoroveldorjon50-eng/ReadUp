@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { db } from '@/lib/db';
+import { db, DATA_DIR } from '@/lib/db';
 import { requireUser } from '@/lib/auth';
 import { fmtDate, levelClass, pct } from '@/lib/util';
 
@@ -19,6 +19,7 @@ export default async function TeacherHome() {
        FROM articles a ORDER BY a.id DESC`
     )
     .all();
+  const meta = Object.fromEntries(db.prepare('SELECT key, value FROM meta').all().map((r) => [r.key, r.value]));
   const readers = db.prepare("SELECT COUNT(*) n FROM users WHERE role = 'student'").get().n;
 
   return (
@@ -28,6 +29,10 @@ export default async function TeacherHome() {
         <Link href="/teacher/articles/new" className="btn primary">+ New article</Link>
       </div>
       <p className="muted">{rows.length} articles · {readers} readers registered</p>
+      <p className="muted small">
+        Storage: <code>{DATA_DIR}</code> · database created {fmtDate(meta.created_at)} · server started {meta.starts} time(s) with it.
+        If the creation date changes after a restart, data is not being kept: check that the volume is mounted at <code>/data</code>.
+      </p>
       {rows.length ? (
         <div className="card table-wrap">
           <table>
