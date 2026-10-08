@@ -10,7 +10,7 @@ export default async function VocabPage() {
   const now = Date.now();
   const words = db
     .prepare(
-      `SELECT w.id, w.word, w.definition, w.translation, w.example, w.box, w.due, w.article_id, a.title article_title
+      `SELECT w.id, w.word, w.definition, w.translation, w.example, w.own_sentence, w.box, w.due, w.article_id, a.title article_title
        FROM saved_words w LEFT JOIN articles a ON a.id = w.article_id WHERE w.user_id = ? ORDER BY w.added_at DESC`
     )
     .all(user.id)

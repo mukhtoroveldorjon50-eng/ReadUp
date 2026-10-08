@@ -47,7 +47,8 @@ export default function Flashcards({ cards }) {
             <h3>{card.word}</h3>
             {card.definition && <p>{card.definition}</p>}
             {card.translation && <p className="tr">🌐 {card.translation}</p>}
-            {card.example && <p className="muted">“{card.example}”</p>}
+            {card.example && <p className="muted"><span className="small">From the article:</span><br />“{card.example}”</p>}
+            {card.own_sentence && <p><span className="small muted">Your sentence:</span><br />“{card.own_sentence}”</p>}
           </>
         )}
       </div>

@@ -9,7 +9,7 @@ export default async function ReviewPage() {
   const user = await requireUser();
   const cards = db
     .prepare(
-      `SELECT id, word, definition, translation, example FROM saved_words
+      `SELECT id, word, definition, translation, example, own_sentence FROM saved_words
        WHERE user_id = ? AND due <= ? ORDER BY due LIMIT 20`
     )
     .all(user.id, Date.now());

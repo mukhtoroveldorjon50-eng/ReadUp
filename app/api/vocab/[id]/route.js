@@ -17,6 +17,17 @@ export async function POST(req, { params }) {
   return json({ ok: true, box });
 }
 
+// PATCH { own_sentence } stores the reader's own example sentence for a saved word.
+export async function PATCH(req, { params }) {
+  const user = await apiUser();
+  if (!user) return unauthorized();
+  const { id } = await params;
+  const sentence = String((await readJson(req)).own_sentence ?? '').trim().slice(0, 400);
+  const info = db.prepare('UPDATE saved_words SET own_sentence = ? WHERE id = ? AND user_id = ?').run(sentence, id, user.id);
+  if (!info.changes) return fail('Word not found.', 404);
+  return json({ ok: true, own_sentence: sentence });
+}
+
 // Removing a word, by its owner.
 export async function DELETE(_req, { params }) {
   const user = await apiUser();

@@ -257,11 +257,20 @@ function WordPopup({ popup, glossMap, savedSet, nativeLang, articleId, onSave, o
   const [sentTr, setSentTr] = useState('');
   const [busy, setBusy] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
+  const [savedId, setSavedId] = useState(null);
+  const [mine, setMine] = useState('');
+  const [mineState, setMineState] = useState('');
   const headword = gloss ? norm(gloss.word) : key;
   const isSaved = savedSet.has(headword) || savedSet.has(key) || justSaved;
 
   useEffect(() => {
     let live = true;
+    if (savedSet.has(headword) || savedSet.has(key)) {
+      fetch('/api/vocab?word=' + encodeURIComponent(savedSet.has(headword) ? headword : key))
+        .then((r) => r.json())
+        .then((d) => { if (live && d.saved) { setSavedId(d.id); setMine(d.own_sentence || ''); } })
+        .catch(() => {});
+    }
     (async () => {
       let found = { found: false };
       for (const f of forms(key).slice(0, 3)) {
@@ -291,15 +300,21 @@ function WordPopup({ popup, glossMap, savedSet, nativeLang, articleId, onSave, o
   async function save() {
     setBusy(true);
     const m = dict?.meanings?.[0];
-    const { ok } = await send('/api/vocab', 'POST', {
+    const { ok, data } = await send('/api/vocab', 'POST', {
       word: headword,
       definition: gloss?.definition || m?.definition || '',
       translation: tr,
-      example: gloss?.example || popup.sentence,
+      example: popup.sentence, // the sentence this word came from
       article_id: articleId,
     });
     setBusy(false);
-    if (ok) { setJustSaved(true); onSave(headword); }
+    if (ok) { setJustSaved(true); setSavedId(data.id); onSave(headword); }
+  }
+
+  async function saveMine() {
+    setMineState('saving');
+    const res = await send(`/api/vocab/${savedId}`, 'PATCH', { own_sentence: mine });
+    setMineState(res.ok ? 'saved' : 'error');
   }
 
   return (
@@ -327,6 +342,17 @@ function WordPopup({ popup, glossMap, savedSet, nativeLang, articleId, onSave, o
         {nativeLang && <button className="btn small" onClick={translateSentence}>Translate sentence</button>}
       </div>
       {sentTr && <p className="tr small">{sentTr}</p>}
+      {isSaved && savedId && (
+        <div className="own">
+          <label className="small muted">Your own sentence with “{headword}”</label>
+          <textarea rows={2} value={mine} maxLength={400} onChange={(e) => { setMine(e.target.value); setMineState(''); }} placeholder={`Write a sentence using ${headword}…`} />
+          <div className="row">
+            <button className="btn small primary" disabled={mineState === 'saving'} onClick={saveMine}>Save my sentence</button>
+            {mineState === 'saved' && <span className="ok small">✓ Saved</span>}
+            {mineState === 'error' && <span className="error small">Could not save</span>}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
